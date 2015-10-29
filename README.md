@@ -21,13 +21,21 @@ ESP UART connections are on GPIO2 (duplicate UART0 TX pin) & GPIO3 (default UART
 
 STM32 can also drive RESET, GPIO0 & GPIO15 on both ESP A & ESP B. This allows it to automatically reset the ESPs & trigger serial bootloading. Firmware uses the same "NodeMCU-compatible" reset protocol via USB CDC control messages - asserting DTR pulls GPIO0, asserting RTS pulls RESET, asserting both together does nothing.
 
+## Basic Test Process
+
+* Host uses esptool.py to flash both ESP A & ESP B with an identical firmware image. Image contains multiple test case programs.
+* Host triggers a reset on both ESP A & ESP B simultaneously.
+* Host uses serial ports to configure ESP A & ESP B with their role (A or B) and name of test to run next.
+* ESPs run individual tests, report status to hosts via USB serial.
+* Host concludes test (success, failure, timeout), asserts reset again, configures ESPs for next test.
+
 ## Test Types
 
 * Standalone tests use only ESP A. ESP B is held in reset.
 
-* Joint tests use ESP A and ESP B. The ESP test firmware "swaps" UART0 onto GPIO 13/15 once it starts running. These are interconnected between the two boards, to allow them to coordinate during joint tests.
+* Joint tests use ESP A and ESP B. The ESP test firmware "swaps" UART0 onto GPIO 13/15 once it starts running. These pins are interconnected between the two boards, to allow them to coordinate during joint tests.
 
-During both kinds of test GPIO2 (connected to STM32 UART RX for serial) is changed from UART0 TX to UART1 TX. This allows test programs to use UART1 to report progress back to the host via USB.
+During both kinds of test the firmware configures GPIO2 (connected to STM32 UART RX for serial) to change from UART0 TX to UART1 TX. This allows test programs to use UART1 to report progress back to the host via USB.
 
 ## Inter-ESP Connections
 
