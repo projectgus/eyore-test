@@ -31,7 +31,7 @@ LibDir=
 [eeschema/libraries]
 LibName1=freetronics_kicad_library/freetronics_schematic
 LibName2=kicad-esp8266/ESP8266
-LibName3=esp-testhw
+LibName3=eyore-test
 LibName4=power
 LibName5=device
 LibName6=transistors

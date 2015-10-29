@@ -1,7 +1,7 @@
 EESchema Schematic File Version 2
 LIBS:freetronics_schematic
 LIBS:ESP8266
-LIBS:esp-testhw
+LIBS:eyore-test
 LIBS:power
 LIBS:device
 LIBS:transistors
@@ -32,19 +32,19 @@ LIBS:atmel
 LIBS:contrib
 LIBS:valves
 LIBS:stm32
-LIBS:esp-testhw-cache
+LIBS:eyore-test-cache
 EELAYER 25 0
 EELAYER END
 $Descr A4 11693 8268
 encoding utf-8
 Sheet 1 1
-Title ""
+Title "Eyore-Test"
 Date ""
-Rev ""
+Rev "0.1"
 Comp ""
-Comment1 ""
-Comment2 ""
-Comment3 ""
+Comment1 "TAPR Open Hardware License"
+Comment2 "Copyright (C) 2015 Angus Gratton"
+Comment3 "Test harness hardware for esp-open-rtos"
 Comment4 ""
 $EndDescr
 $Comp
