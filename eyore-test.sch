@@ -687,7 +687,6 @@ F 3 "" H 3300 7050 60  0000 C CNN
 	1    3300 7050
 	1    0    0    -1  
 $EndComp
-NoConn ~ 5400 6000
 NoConn ~ 5400 6100
 $Comp
 L CONN_01X02 P3
@@ -739,7 +738,6 @@ Text Notes 3900 2450 0    60   ~ 0
 STM Bootloader Button
 Text Notes 5100 2450 0    60   ~ 0
 STM Reset Button
-NoConn ~ 1400 5450
 Text Label 8200 3400 2    60   ~ 0
 A_GPIO15_UART_TX
 $Comp
@@ -1226,4 +1224,7 @@ F 3 "" H 10900 3750 60  0000 C CNN
 $EndComp
 Wire Wire Line
 	5400 5600 4950 5600
+Text Label 1800 5450 2    60   ~ 0
+B_GPIO15_UART_TX
+NoConn ~ 5400 6000
 $EndSCHEMATC
