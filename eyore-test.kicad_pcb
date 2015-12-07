@@ -1316,7 +1316,7 @@
       (net 19 /A_GPIO2))
   )
 
-  (gr_text github.com/projectgus/eyore-test (at 168.8 96.2) (layer F.SilkS) (tstamp 5664FE53)
+  (gr_text github.com/projectgus/eyore-test (at 170.5 117) (layer F.SilkS) (tstamp 5664FE53)
     (effects (font (size 0.7 0.7) (thickness 0.15)) (justify left))
   )
   (gr_text GND (at 160.7 108.7 90) (layer F.SilkS) (tstamp 5664D444)
