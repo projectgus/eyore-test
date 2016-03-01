@@ -5,8 +5,8 @@ A hardware design for running automated tests against the esp-open-rtos ESP8266-
 # Major Components
 
 * 2x ESP-12E ESP8266 processor modules, to run tests on. Named A & B.
-* 1x STM32F042 Cortex M0 microcontroller - acts as USB serial for programming & monitoring, also provides peripherals to test against.
-* Host computer with esp-open-rtos source tree, including host test coordination program.
+* 1x STM32F072C8 Cortex M0 microcontroller - acts as USB serial for programming & monitoring, also provides a "programmable peripheral" to test against.
+* Host computer with esp-open-rtos source tree, including host test program (`test_runner.py`).
 
 # Cost
 
@@ -16,50 +16,58 @@ Aim is for total BOM cost under $12US for small quantities, all inclusive.
 
 ## Programming/Initialisation
 
-STM32F042 acts as USB device (dual CDC ACM serial port). STM32 USART1 connects to ESP A, USART2 to ESP B.
+STM32F072 acts as USB device (dual CDC ACM serial port). STM32 USART1 connects to ESP A's TX/RX pins, USART2 to ESP B TX/RX pins.
 
-Each ESP has its USB/serial UART connection made via pin GPIO2 (the duplicate UART0 TX pin) & pin GPIO3 (the default UART0 RX pin).
+Other STM32 I/O pins are wired to drive RESET and GPIO0 on both ESP A & ESP B. This allows the STM32 to reset the ESPs & select either serial bootloading or normal operation.
 
-Other STM32 pins are also wired to drive RESET, GPIO0 & GPIO15 on both ESP A & ESP B. This allows the STM32 to reset the ESPs & select either serial bootloading or normal operation. The USB CDC interface allows the same "NodeMCU-compatible" reset protocol that works with esptool.py - asserting DTR pulls down GPIO0, asserting RTS pulls down RESET, but asserting both DTR and RTS together does nothing.
+The USB CDC interface provides a "NodeMCU-compatible" reset protocol that works with esptool.py - asserting DTR pulls down GPIO0, asserting RTS pulls down RESET, but asserting both DTR and RTS together does nothing.
 
-## Test Types
+## ESP A / ESP B Connections
 
-* Standalone tests use only ESP A. ESP B is held in reset.
+These connections match the "dual" configuration mentioned in the esp-open-rtos test_setup docs. These allow the ESPs to interact with each other during tests.
 
-* Joint tests involve interaction between ESP A and ESP B. The ESP test firmware "swaps" UART0 onto GPIO 13/15 once it starts running. These pins are interconnected between the two boards, to allow them to coordinate during joint tests.
+This part of the test setup can be reproduced on a breadboard fairly easily.
 
-During both kinds of test the firmware configures GPIO2 (connected to STM32 UART RX for USB serial) as UART1 TX. This allows test programs to use UART1 to report progress back to the host via USB serial.
+ESP A & B have the following interconncted pins, all via 220 ohm resistors for short circuit protection:
 
-## Basic Test Process
+ESP A | ESP B | Function
+----- | ------  --------
+2     | 2     |
+4     | 4     |
+5     | 5     |
+12    | 12    |
+13    | 15    | ESP UART RX/TX "swapped"
+15    | 13    | ESP UART TX/RX "swapped"
+14    | 14    |
 
-Setup:
-* Host uses esptool.py to flash both ESP A & ESP B with an identical firmware image. The image contains multiple test cases compiled into one program.
-* Host sends a command to ESP A which causes it to output a list of the names of compiled-in tests (and whether each test is standalone or joint).
+Note that GPIOs on ESP A are also connected to the STM32.
 
-Then, for each test:
-* Host uses DTR to reset both ESP A & ESP B simultaneously (joint test), or resets ESP A while keeping ESP B in reset (standalone test).
-* Host uses serial commands to configure ESPs with their roles (A or B), and name of the test to run.
-* ESPs run individual test functions, report status to hosts via USB serial.
-* Host concludes test (success, failure, timeout), resets ESPs again, then configures for next test.
+## ESP A / STM32 Connections
 
-## Inter-ESP Connections
+To allow peripheral testing between ESP A and an independent microcontroller, some STM32 peripherals are connected to ESP A peripherals:
 
-As well as the "swapped" UART0 pins on GPIOs 13 & 15 for cross-ESP coordination, the GPIOs 0, 1, 4, 5, 12, 14 & 16 are interconnected between ESP A & B. All inter-ESP connections are via 220 ohm resistors to protect against damage from shorts.
+ESP A Interface | ESP GPIOs              | STM32 Interface | ESP Pins
+--------------- | ---------------------- | ---------------- | ----------------
+Software i2c    | 4, 5                   | I2C1             | PB6, PB7 [1]
+HSPI            | 12-15                  | SPI1             | PA4-PA7
+I2S Input       | 14(WS),13(BCK),12(DAT) | I2S1             | PA15, PB3, PB5
+I2S Output      | 2(WS),3(DAT),14(CLK)   | N/A (bit-bang)   | PB11, PA9, PA4 [2]
+SPI (flash intf)|                        | SPI2             | PB12..PB15 [3]
+ADC (TOUT)      | TOUT                   | GPIO (bit-bang)  | PA0 & PB4 [4]
 
-## Standalone test functions
+[1] I2C1 slave is the only STM32 interface enabled after reset, and is the protocol used for the ESP itself to configure the STM32 as a "programmable peripheral".
 
-To allow more in-depth standalone testing using ESP A, some STM32 peripherals are connected to ESP A peripherals:
+[2] ESP I2S output is not wired to a I2S peripheral on the STM32. However STM32 can bit-bang reading of the I2S output (at slow clock speeds).
 
-* ESP A GPIOs 4 & 5 are connected to STM32 I2C1 (pin PF0, PF1).
-* ESP A HSPI interface (GPIOs 12-15) are connected to STM32 SPI1 (Port A).
-* ESP A I2S input pins are connected to STM32 I2S1 (pin PA15, Port B).
-* ESP A I2S output data pin is connected to STM32 PA9 (to potentially measure I2S output timings, etc.)
-* ESP A analog input pin is connected to an RC low pass filter driven by PWM from STM32 PB4, creating a very low frequency DAC for testing the ESP ADC.
-* ESP analog input pin is also wired back to STM32 AIN0 for comparison.
+[3] Not used due to hardware bug: On Rev 1.0 of eyore-test the SPI2 NSS pin (slave select) is wired to the CS line of the ESP module, which is the CS line for the ESP's SPI flash. The other SPI2 NSS pin is not connected in this revision.
 
-Out of the peripherals just mentioned, only the STRM I2C1 port is enabled by the STM32 firmware after reset (as an I2C slave). The idea is that the ESP can configure and interact with the STM32 peripherals via I2C reads and writes.
+[4] TOUT pin is connected directly to STM ADC pin PA0. TOUT is also connected to PB4 via an RC network, so PB4 can be used as a low-fi DAC, PWMing a voltage for the ADC to read.
 
-Actual firmware details are TBD (all of the peripheral stuff is provided "on spec" rather than likely to be part of the initial test rollout.)
+## Programmable Peripheral Interface
+
+As part of each test, ESP A can configure the STM32 peripherals via the I2C interface.
+
+Actual I2C protocol/register details are TBD, likely to be incremental features.
 
 # STM32 Firmware
 
